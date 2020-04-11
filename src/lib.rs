@@ -11,12 +11,18 @@ pub struct Config{
 }
 
 impl Config{
-    pub fn new(args:&Vec<String>)->Result<Config,&'static str>{
-        if args.len()<3{
-            return Err("Not enough arguments");
-        }
-        let _query = args[1].clone();
-        let file_name = args[2].clone();
+    pub fn new(mut args:env::Args)->Result<Config,&'static str>{
+        args.next();
+        let _query = match args.next(){
+            Some(arg)=>{
+                arg
+            },
+            None=> return Err("Did not get query string")
+        };
+        let file_name = match args.next(){
+            Some(arg)=>arg,
+            None=> return Err("Did not get filename")
+        };
         let case_sesitive = env::var("CASE_INSENSITIVE").is_err(); //is_err returns true, if env variable is not set.So, it does case sensitive search.
         let config = Config{
             query:_query,
@@ -45,24 +51,16 @@ pub fn run(config:Config)->Result<(),io::Error> {
 
 //Here, if we don't specify lifetime, rust wont compile as it does not know till what lifetime the return value should be contained.
 pub fn search<'a>(query:&str,content:&'a str)->Vec<&'a str>{
-    let mut res = Vec::new();
-    for line in content.lines(){
-        if line.contains(query){
-            res.push(line);
-        }
-    }
-    res
+    content.lines().filter(|line|{
+        line.contains(query)
+    }).collect()
 }
 
 pub fn search_case_not_sensitive<'a>(query:&str,content:&'a str)->Vec<&'a str>{
-    let mut res = Vec::new();
     let query = query.to_lowercase();
-    for line in content.lines(){
-        if line.to_lowercase().contains(&query){
-            res.push(line);
-        }
-    }
-    res
+    content.lines().filter(|line|{
+        line.to_lowercase().contains(&query)
+    }).collect()
 }
 
 #[cfg(test)]
