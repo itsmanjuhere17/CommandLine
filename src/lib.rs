@@ -6,7 +6,8 @@ use std::io;
 #[derive(Debug,PartialEq)]
 pub struct Config{
     pub query:String,
-    pub filename:String
+    pub filename:String,
+    pub is_case_sensitive:bool
 }
 
 impl Config{
@@ -16,9 +17,11 @@ impl Config{
         }
         let _query = args[1].clone();
         let file_name = args[2].clone();
+        let case_sesitive = env::var("CASE_INSENSITIVE").is_err(); //is_err returns true, if env variable is not set.So, it does case sensitive search.
         let config = Config{
             query:_query,
             filename:file_name,
+            is_case_sensitive:case_sesitive
         };
         Ok(config)
     }//end of new function
@@ -26,9 +29,17 @@ impl Config{
 
 pub fn run(config:Config)->Result<(),io::Error> {
     let file_content = fs::read_to_string(config.filename)?;
-    for hit in search(&config.query,&file_content){
-        println!("{}",hit);
+    if config.is_case_sensitive{
+        for hit in search(&config.query,&file_content){
+            println!("{}",hit);
+        }
     }
+    else{
+        for hit in search_case_not_sensitive(&config.query,&file_content){
+            println!("{}",hit);
+        }
+    }
+
     Ok(())
 }
 
@@ -42,6 +53,18 @@ pub fn search<'a>(query:&str,content:&'a str)->Vec<&'a str>{
     }
     res
 }
+
+pub fn search_case_not_sensitive<'a>(query:&str,content:&'a str)->Vec<&'a str>{
+    let mut res = Vec::new();
+    let query = query.to_lowercase();
+    for line in content.lines(){
+        if line.to_lowercase().contains(&query){
+            res.push(line);
+        }
+    }
+    res
+}
+
 #[cfg(test)]
 mod tests{
     use super::*;
@@ -66,7 +89,8 @@ Pick three.";
         let args = vec!["CommandLineProject".to_string(),"hello".to_string(),"hello_world.txt".to_string()];
         assert_eq!(Ok(Config{
             query:args[1].to_string(),
-            filename:args[2].to_string()
+            filename:args[2].to_string(),
+            is_case_sensitive:false
         }), Config::new(&args));
     }
 }
